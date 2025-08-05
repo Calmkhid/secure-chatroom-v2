@@ -76,14 +76,24 @@ async function loadChatHistory(username) {
         const messages = await response.json();
         
         chatMessages.innerHTML = '';
-        messages.forEach(msg => {
-            const isOwn = msg.sender === currentUser;
-            appendMessage(msg.sender, msg.message, isOwn, msg.timestamp);
-        });
+        
+        if (messages && messages.length > 0) {
+            messages.forEach(msg => {
+                const isOwn = msg.sender === currentUser;
+                appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt);
+            });
+        } else {
+            // Show a message when no history
+            const noHistory = document.createElement('div');
+            noHistory.className = 'no-history';
+            noHistory.textContent = 'No messages yet. Start the conversation!';
+            chatMessages.appendChild(noHistory);
+        }
         
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } catch (error) {
         console.error('Error loading chat history:', error);
+        chatMessages.innerHTML = '<div class="error">Failed to load chat history</div>';
     }
 }
 
@@ -94,7 +104,7 @@ form.addEventListener('submit', (e) => {
     
     if (message && selectedUser) {
         socket.emit('privateMessage', { to: selectedUser, message });
-        appendMessage(currentUser, message, true);
+        // Don't append message immediately - wait for confirmation
         messageInput.value = '';
         
         // Add to recent chats
@@ -103,6 +113,11 @@ form.addEventListener('submit', (e) => {
     } else if (!selectedUser) {
         alert('Please select a user to chat with');
     }
+});
+
+// Handle message confirmation from server
+socket.on('messageSent', ({ to, message, timestamp }) => {
+    appendMessage(currentUser, message, true, timestamp);
 });
 
 // Handle incoming messages
@@ -117,6 +132,11 @@ socket.on('privateMessage', ({ from, message, timestamp }) => {
     if (selectedUser !== from) {
         showNotification(`${from}: ${message}`);
     }
+});
+
+// Handle message errors
+socket.on('messageError', ({ error }) => {
+    alert('Failed to send message: ' + error);
 });
 
 // Append message to chat

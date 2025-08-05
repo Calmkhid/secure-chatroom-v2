@@ -159,14 +159,23 @@ io.on('connection', (socket) => {
             const encrypted = encrypt(message);
             const timestamp = new Date();
             
+            // Send message to recipient if online
             if (users[to]) {
                 io.to(users[to]).emit('privateMessage', {
                     from: socket.username,
-                    message: decrypt(encrypted),
+                    message: message, // Send decrypted message to recipient
                     timestamp: timestamp
                 });
             }
 
+            // Send confirmation back to sender
+            socket.emit('messageSent', {
+                to: to,
+                message: message,
+                timestamp: timestamp
+            });
+
+            // Save message to database
             await Message.create({
                 sender: socket.username,
                 receiver: to,
@@ -178,6 +187,7 @@ io.on('connection', (socket) => {
             console.log('Message sent from', socket.username, 'to', to);
         } catch (error) {
             console.error('Message error:', error);
+            socket.emit('messageError', { error: 'Failed to send message' });
         }
     });
 
