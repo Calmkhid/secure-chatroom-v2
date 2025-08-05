@@ -96,6 +96,18 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Session check endpoint for debugging
+app.get('/api/session', (req, res) => {
+    res.json({ 
+        hasSession: !!req.session,
+        hasUser: !!(req.session && req.session.user),
+        user: req.session && req.session.user ? { 
+            username: req.session.user.username,
+            id: req.session.user._id 
+        } : null
+    });
+});
+
 // Root route - redirect logged in users to chat, others to login
 app.get('/', (req, res) => {
     if (req.session && req.session.user) {

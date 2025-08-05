@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
 
+        console.log('Attempting login for:', username);
+
         try {
             const response = await fetch('/auth/login', {
                 method: 'POST',
@@ -38,16 +40,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const data = await response.json();
+            console.log('Login response:', response.status, data);
 
             if (response.ok) {
                 localStorage.setItem('username', username);
                 localStorage.setItem('userId', data.user._id);
+                console.log('Login successful, redirecting to /chat');
                 window.location.href = '/chat';
             } else {
                 authMessage.textContent = data.error || 'Login failed';
                 authMessage.className = 'auth-message error';
+                console.log('Login failed:', data.error);
             }
         } catch (error) {
+            console.error('Login error:', error);
             authMessage.textContent = 'Network error. Please try again.';
             authMessage.className = 'auth-message error';
         }
