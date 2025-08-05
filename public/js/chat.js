@@ -161,7 +161,16 @@ function selectUser(username) {
     selectedUser = username;
     chatWith.textContent = `Chatting with: ${username}`;
     userStatus.textContent = onlineUsers.has(username) ? '🟢 Online' : '🔴 Offline';
+    
+    // Clear current messages and show loading
+    chatMessages.innerHTML = '<div class="loading">Loading chat history...</div>';
+    
+    // Load chat history
     loadChatHistory(username);
+    
+    // Add to recent chats
+    recentChatsList.add(username);
+    updateRecentChats();
 }
 
 // Load chat history
@@ -177,18 +186,24 @@ async function loadChatHistory(username) {
                 const isOwn = msg.sender === currentUser;
                 appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt, msg.media);
             });
+            
+            // Scroll to bottom to show latest messages
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
         } else {
             // Show a message when no history
             const noHistory = document.createElement('div');
             noHistory.className = 'no-history';
-            noHistory.textContent = 'No messages yet. Start the conversation!';
+            noHistory.innerHTML = `
+                <i class="fas fa-comments" style="font-size: 2em; color: var(--text-secondary); margin-bottom: 10px;"></i>
+                <div>No messages yet. Start the conversation!</div>
+            `;
             chatMessages.appendChild(noHistory);
         }
-        
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     } catch (error) {
         console.error('Error loading chat history:', error);
-        chatMessages.innerHTML = '<div class="error">Failed to load chat history</div>';
+        chatMessages.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Failed to load chat history</div>';
     }
 }
 
@@ -326,7 +341,16 @@ socket.on('userList', users => {
                 <span class="user-name">${user}</span>
                 <span class="status">🟢 Online</span>
             `;
-            li.addEventListener('click', () => selectUser(user));
+            li.addEventListener('click', () => {
+                selectUser(user);
+                // Highlight the selected user
+                document.querySelectorAll('.recent-chat-item, .user-item').forEach(item => {
+                    item.style.background = 'var(--bg-secondary)';
+                    item.style.color = 'var(--text-primary)';
+                });
+                li.style.background = 'var(--primary-color)';
+                li.style.color = 'white';
+            });
             userList.appendChild(li);
         }
     });
@@ -348,7 +372,15 @@ function updateRecentChats() {
                 <span class="user-name">${user}</span>
                 <span class="status">${onlineUsers.has(user) ? '🟢' : '🔴'}</span>
             `;
-            li.addEventListener('click', () => selectUser(user));
+            li.addEventListener('click', () => {
+                selectUser(user);
+                // Highlight the selected user
+                document.querySelectorAll('.recent-chat-item, .user-item').forEach(item => {
+                    item.style.background = 'var(--bg-secondary)';
+                });
+                li.style.background = 'var(--primary-color)';
+                li.style.color = 'white';
+            });
             recentChats.appendChild(li);
         }
     });
