@@ -96,6 +96,15 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Root route - redirect logged in users to chat, others to login
+app.get('/', (req, res) => {
+    if (req.session && req.session.user) {
+        res.redirect('/chat');
+    } else {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+});
+
 // Auth check
 app.get('/chat', ensureAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'chat.html'));

@@ -1,5 +1,13 @@
 function ensureAuth(req, res, next) {
-    if (req.session && req.session.user) return next();
+    console.log('ensureAuth check - session:', req.session ? 'exists' : 'null');
+    console.log('ensureAuth check - user:', req.session && req.session.user ? req.session.user.username : 'no user');
+    
+    if (req.session && req.session.user) {
+        console.log('User authenticated, proceeding to:', req.path);
+        return next();
+    }
+    
+    console.log('User not authenticated, redirecting to login');
     return res.redirect('/');
 }
 

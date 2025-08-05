@@ -39,17 +39,22 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Missing fields' });
         }
         
+        console.log('Login attempt for username:', username);
+        
         const user = await User.findOne({ username });
         if (!user) {
+            console.log('User not found:', username);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         // Check password
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
+            console.log('Invalid password for user:', username);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        console.log('Login successful for user:', username);
         req.session.user = user;
         res.json({ user: { _id: user._id, username: user.username } });
     } catch (error) {
