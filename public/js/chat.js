@@ -17,6 +17,10 @@ const voiceBtn = document.getElementById('voiceBtn');
 const imageInput = document.getElementById('imageInput');
 const voiceInput = document.getElementById('voiceInput');
 
+// Mobile toggle
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.querySelector('.sidebar');
+
 let currentUser = localStorage.getItem('username');
 let currentUserId = localStorage.getItem('userId');
 let selectedUser = null;
@@ -35,6 +39,20 @@ currentUserSpan.textContent = `Logged in as: ${currentUser}`;
 
 // Register user with socket
 socket.emit('registerUser', { userId: currentUserId, username: currentUser });
+
+// Mobile sidebar toggle
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('show');
+    });
+    
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+            sidebar.classList.remove('show');
+        }
+    });
+}
 
 // Auto-resize textarea
 messageInput.addEventListener('input', function() {
@@ -161,6 +179,11 @@ function selectUser(username) {
     selectedUser = username;
     chatWith.textContent = `Chatting with: ${username}`;
     userStatus.textContent = onlineUsers.has(username) ? '🟢 Online' : '🔴 Offline';
+    
+    // Close sidebar on mobile
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove('show');
+    }
     
     // Clear current messages and show loading
     chatMessages.innerHTML = '<div class="loading">Loading chat history...</div>';
