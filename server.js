@@ -38,13 +38,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET || 'supersecuresecret',
-    resave: true,
-    saveUninitialized: true,
-    store: MongoStore.create({ mongoUrl: MONGO_URI }),
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ 
+        mongoUrl: MONGO_URI,
+        ttl: 24 * 60 * 60 // 1 day
+    }),
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS !== 'false',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        httpOnly: true
+        httpOnly: true,
+        sameSite: 'lax'
     }
 }));
 

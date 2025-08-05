@@ -1,8 +1,7 @@
 services:
   - type: web
-    name: secure-chatroom
+    name: secure-chatroom-v2
     env: node
-    plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -10,5 +9,5 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
-      - key: MONGO_URI
-        sync: false 
+      - key: FORCE_HTTPS
+        value: false 
