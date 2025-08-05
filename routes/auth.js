@@ -25,7 +25,14 @@ router.post('/signup', async (req, res) => {
         });
         
         req.session.user = user;
-        res.json({ user: { _id: user._id, username: user.username } });
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session error' });
+            }
+            console.log('Session saved successfully for new user:', username);
+            res.json({ user: { _id: user._id, username: user.username } });
+        });
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -56,7 +63,14 @@ router.post('/login', async (req, res) => {
 
         console.log('Login successful for user:', username);
         req.session.user = user;
-        res.json({ user: { _id: user._id, username: user.username } });
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session error' });
+            }
+            console.log('Session saved successfully for user:', username);
+            res.json({ user: { _id: user._id, username: user.username } });
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Server error' });

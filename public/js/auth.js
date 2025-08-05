@@ -46,7 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.setItem('username', username);
                 localStorage.setItem('userId', data.user._id);
                 console.log('Login successful, redirecting to /chat');
-                window.location.href = '/chat';
+                // Add a small delay to ensure session is saved
+                setTimeout(() => {
+                    window.location.href = '/chat';
+                }, 100);
             } else {
                 authMessage.textContent = data.error || 'Login failed';
                 authMessage.className = 'auth-message error';
@@ -86,7 +89,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 localStorage.setItem('username', username);
                 localStorage.setItem('userId', data.user._id);
-                window.location.href = '/chat';
+                // Add a small delay to ensure session is saved
+                setTimeout(() => {
+                    window.location.href = '/chat';
+                }, 100);
             } else {
                 authMessage.textContent = data.error || 'Signup failed';
                 authMessage.className = 'auth-message error';

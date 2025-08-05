@@ -28,7 +28,9 @@ mongoose.connect(MONGO_URI, {
 .catch(err => {
     console.log('MongoDB connection error:', err.message);
     console.log('Please make sure MongoDB is running or check your connection string');
-    process.exit(1);
+    console.log('For local development, you can install MongoDB or use MongoDB Atlas');
+    // Don't exit for development - let the app run without DB
+    console.log('Continuing without database connection...');
 });
 
 // Middleware
@@ -36,12 +38,13 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET || 'supersecuresecret',
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: MongoStore.create({ mongoUrl: MONGO_URI }),
     cookie: {
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true
     }
 }));
 
@@ -110,9 +113,14 @@ app.get('/api/session', (req, res) => {
 
 // Root route - redirect logged in users to chat, others to login
 app.get('/', (req, res) => {
+    console.log('Root route accessed - session:', req.session ? 'exists' : 'null');
+    console.log('Root route - user:', req.session && req.session.user ? req.session.user.username : 'no user');
+    
     if (req.session && req.session.user) {
+        console.log('User is logged in, redirecting to /chat');
         res.redirect('/chat');
     } else {
+        console.log('User not logged in, serving login page');
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
     }
 });
