@@ -1,93 +1,91 @@
 const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const http = require('http');
 const mongoose = require('mongoose');
+const socketio = require('socket.io');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 require('dotenv').config();
 
+const authRoutes = require('./routes/auth');
+const { ensureAuth } = require('./utils/authMiddleware');
+const { encrypt, decrypt } = require('./utils/encryption');
+const Message = require('./models/Message');
 const User = require('./models/User');
-const { encryptMessage, decryptMessage } = require('./utils/encryption');
 
-// ✅ Connect MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
+const app = express();
+const server = http.createServer(app);
+const io = socketio(server);
 
-// ✅ Middleware
-app.use(express.static(path.join(__dirname, 'public')));
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.log(err));
+
+// Middleware
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ✅ Secure sessions (no warnings)
 app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions'
-  }),
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',  // only HTTPS in production
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
+    secret: 'supersecuresecret',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
 }));
 
-// ✅ Login
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const user = await User.findOne({ email, password });
-    if (user) {
-      req.session.user = user;
-      res.redirect('/');
-    } else {
-      res.status(401).send('Invalid credentials');
-    }
-  } catch (err) {
-    console.error('❌ Login error:', err);
-    res.status(500).send('Internal Server Error');
-  }
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/auth', authRoutes);
+
+// Auth check
+app.get('/chat', ensureAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ✅ Socket.io chat
+// Socket.io
+const users = {};
+
 io.on('connection', (socket) => {
-  console.log('🟢 User connected');
+    socket.on('registerUser', async ({ userId, username }) => {
+        users[username] = socket.id;
+        socket.username = username;
+        socket.userId = userId;
+    });
 
-  socket.on('join-room', (room) => {
-    socket.join(room);
-    console.log(`User joined room: ${room}`);
-  });
+    socket.on('privateMessage', async ({ to, message }) => {
+        const encrypted = encrypt(message);
+        if (users[to]) {
+            io.to(users[to]).emit('privateMessage', {
+                from: socket.username,
+                message: decrypt(encrypted),
+            });
+        }
 
-  socket.on('chat-message', ({ room, msg }) => {
-    const encrypted = encryptMessage(msg);
-    io.to(room).emit('chat-message', encrypted);
-  });
+        await Message.create({
+            sender: socket.username,
+            receiver: to,
+            message: encrypted,
+            isGroup: false,
+        });
+    });
 
-  socket.on('disconnect', () => {
-    console.log('🔴 User disconnected');
-  });
+    socket.on('groupMessage', async ({ message }) => {
+        const encrypted = encrypt(message);
+        socket.broadcast.emit('groupMessage', {
+            from: socket.username,
+            message: decrypt(encrypted),
+        });
+
+        await Message.create({
+            sender: socket.username,
+            receiver: 'group',
+            message: encrypted,
+            isGroup: true,
+        });
+    });
 });
 
-// ✅ Error catchers
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Exception:', err);
-});
-process.on('unhandledRejection', (err) => {
-  console.error('💥 Unhandled Rejection:', err);
-});
-
-// ✅ Start
+// Start server
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

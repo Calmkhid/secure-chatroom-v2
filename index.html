@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Chatroom</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container" id="login-container">
+        <h1>Secure Hacker Chatroom</h1>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+            <p>Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
+        </form>
+    </div>
+
+    <div class="container hidden" id="signup-container">
+        <h1>Create Account</h1>
+        <form id="signup-form">
+            <input type="text" id="new-username" placeholder="Username" required>
+            <input type="password" id="new-password" placeholder="Password" required>
+            <button type="submit">Sign Up</button>
+            <p>Already have an account? <a href="#" id="show-login">Log in</a></p>
+        </form>
+    </div>
+
+    <div class="chat-ui hidden" id="chat-container">
+        <div class="sidebar">
+            <button id="toggle-group">Group Chat</button>
+            <input type="text" id="private-username" placeholder="Chat with user...">
+            <ul id="user-list"></ul>
+        </div>
+        <div class="chat-window" id="chat-window"></div>
+        <div class="message-input">
+            <input type="text" id="message" placeholder="Type a message...">
+            <button id="send">Send</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>

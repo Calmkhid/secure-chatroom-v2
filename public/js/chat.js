@@ -1,46 +1,45 @@
 const socket = io();
-const form = document.getElementById('message-form');
-const input = document.getElementById('message-input');
-const messages = document.getElementById('messages');
-const targetInput = document.getElementById('target-user');
-const privateBtn = document.getElementById('start-private-chat');
-const groupBtn = document.getElementById('switch-to-group');
+const form = document.getElementById('messageForm');
+const chatMessages = document.getElementById('chatMessages');
+const recipientInput = document.getElementById('recipient');
+const messageInput = document.getElementById('messageInput');
+const userList = document.getElementById('userList');
+const groupToggle = document.getElementById('groupToggle');
 
-let currentTarget = 'group';
+let currentUser = localStorage.getItem("username");
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
-  if (input.value.trim()) {
-    socket.emit('chat message', {
-      content: input.value,
-      to: currentTarget,
-    });
-    input.value = '';
+  const to = recipientInput.value.trim();
+  const message = messageInput.value.trim();
+  if (message && to) {
+    socket.emit('privateMessage', { to, message });
+    appendMessage(currentUser, message, true);
+    messageInput.value = '';
   }
 });
 
-socket.on('chat message', ({ from, content }) => {
-  const item = document.createElement('div');
-  item.textContent = `[${from}]: ${content}`;
-  messages.appendChild(item);
-  messages.scrollTop = messages.scrollHeight;
+socket.on('privateMessage', ({ from, message }) => {
+  appendMessage(from, message, false);
 });
 
-privateBtn.addEventListener('click', () => {
-  const target = targetInput.value.trim();
-  if (target) {
-    currentTarget = target;
-    messages.innerHTML = '';
-    const info = document.createElement('div');
-    info.textContent = `🔒 Private chat with ${target}`;
-    messages.appendChild(info);
-  }
+function appendMessage(sender, message, isOwn) {
+  const msg = document.createElement('div');
+  msg.className = isOwn ? 'own' : 'incoming';
+  msg.innerHTML = `<strong>${sender}</strong>: ${message}`;
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+socket.on('userList', users => {
+  userList.innerHTML = '';
+  users.forEach(user => {
+    const li = document.createElement('li');
+    li.textContent = user;
+    userList.appendChild(li);
+  });
 });
 
-groupBtn.addEventListener('click', () => {
-  currentTarget = 'group';
-  messages.innerHTML = '';
-  const info = document.createElement('div');
-  info.textContent = `👥 Group chat`;
-  messages.appendChild(info);
+groupToggle.addEventListener('click', () => {
+  recipientInput.value = 'group';
 });
