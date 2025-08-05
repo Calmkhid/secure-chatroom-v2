@@ -1,1 +1,58 @@
-/* Styled frontend CSS */
+body {
+  margin: 0;
+  font-family: "Courier New", monospace;
+  background: #000;
+  color: #0f0;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 220px;
+  padding: 10px;
+  background: #111;
+  border-right: 1px solid #0f0;
+}
+
+#chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  border-bottom: 1px solid #0f0;
+}
+
+#messages div {
+  margin: 5px 0;
+  word-wrap: break-word;
+}
+
+#message-form {
+  display: flex;
+  padding: 10px;
+}
+
+#message-input {
+  flex: 1;
+  padding: 8px;
+  background: #111;
+  color: #0f0;
+  border: 1px solid #0f0;
+}
+
+button {
+  background: #222;
+  color: #0f0;
+  border: 1px solid #0f0;
+  padding: 8px 12px;
+  margin-left: 5px;
+  cursor: pointer;
+}
