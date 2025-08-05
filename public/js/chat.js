@@ -199,14 +199,22 @@ function selectUser(username) {
 // Load chat history
 async function loadChatHistory(username) {
     try {
+        console.log(`Loading chat history for user: ${username}`);
         const response = await fetch(`/api/messages/${username}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const messages = await response.json();
+        console.log(`Loaded ${messages.length} messages`);
         
         chatMessages.innerHTML = '';
         
         if (messages && messages.length > 0) {
-            messages.forEach(msg => {
+            messages.forEach((msg, index) => {
                 const isOwn = msg.sender === currentUser;
+                console.log(`Message ${index + 1}:`, msg);
                 appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt, msg.media);
             });
             
@@ -226,7 +234,7 @@ async function loadChatHistory(username) {
         }
     } catch (error) {
         console.error('Error loading chat history:', error);
-        chatMessages.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Failed to load chat history</div>';
+        chatMessages.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Failed to load chat history: ${error.message}</div>`;
     }
 }
 

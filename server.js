@@ -78,6 +78,8 @@ app.get('/api/messages/:username', ensureAuth, async (req, res) => {
         const { username } = req.params;
         const currentUser = req.session.user.username;
         
+        console.log(`Loading messages between ${currentUser} and ${username}`);
+        
         const messages = await Message.find({
             $or: [
                 { sender: currentUser, receiver: username },
@@ -86,17 +88,25 @@ app.get('/api/messages/:username', ensureAuth, async (req, res) => {
             isGroup: false
         }).sort({ createdAt: 1 });
         
+        console.log(`Found ${messages.length} messages`);
+        
         const processedMessages = messages.map(msg => {
             const messageObj = msg.toObject();
             
             // Decrypt text messages
-            if (messageObj.message) {
-                messageObj.message = decrypt(messageObj.message);
+            if (messageObj.message && messageObj.message.trim() !== '') {
+                try {
+                    messageObj.message = decrypt(messageObj.message);
+                } catch (error) {
+                    console.error('Decryption error:', error);
+                    messageObj.message = '[Encrypted message]';
+                }
             }
             
             return messageObj;
         });
         
+        console.log(`Processed ${processedMessages.length} messages`);
         res.json(processedMessages);
     } catch (error) {
         console.error('Message history error:', error);
@@ -173,9 +183,11 @@ io.on('connection', (socket) => {
                     data: media.data,
                     filename: media.filename
                 };
+                console.log(`Saving media message from ${socket.username} to ${to}`);
             } else {
                 // Handle text message
                 encryptedMessage = encrypt(message);
+                console.log(`Saving text message from ${socket.username} to ${to}: "${message}"`);
             }
             
             // Send message to recipient if online
@@ -197,7 +209,7 @@ io.on('connection', (socket) => {
             });
 
             // Save message to database
-            await Message.create({
+            const savedMessage = await Message.create({
                 sender: socket.username,
                 receiver: to,
                 message: encryptedMessage,
@@ -206,6 +218,7 @@ io.on('connection', (socket) => {
                 createdAt: timestamp
             });
             
+            console.log(`Message saved to database with ID: ${savedMessage._id}`);
             console.log('Message sent from', socket.username, 'to', to, media ? `(${media.type})` : '');
         } catch (error) {
             console.error('Message error:', error);
