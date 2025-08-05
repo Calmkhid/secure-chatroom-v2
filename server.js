@@ -21,8 +21,6 @@ const io = socketio(server);
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/secure-chatroom';
 
 mongoose.connect(MONGO_URI, { 
-    useNewUrlParser: true, 
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
 })
