@@ -4,34 +4,45 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const mongoose = require('mongoose');
 const session = require('express-session');
-const crypto = require('crypto');
+const MongoStore = require('connect-mongo');
+const path = require('path');
 require('dotenv').config();
 
 const User = require('./models/User');
 const { encryptMessage, decryptMessage } = require('./utils/encryption');
 
-// ✅ MongoDB connection
+// ✅ Connect MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch((err) => {
-  console.error('❌ MongoDB connection error:', err);
-  process.exit(1);
-});
+}).then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // ✅ Middleware
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ✅ Secure sessions (no warnings)
 app.use(session({
-  secret: 'keyboard cat', // replace with a strong secret in production
+  secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    collectionName: 'sessions'
+  }),
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',  // only HTTPS in production
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
 }));
 
-// ✅ Login route
+// ✅ Login
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -50,7 +61,7 @@ app.post('/login', async (req, res) => {
 
 // ✅ Socket.io chat
 io.on('connection', (socket) => {
-  console.log('🟢 A user connected');
+  console.log('🟢 User connected');
 
   socket.on('join-room', (room) => {
     socket.join(room);
@@ -63,20 +74,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('🔴 A user disconnected');
+    console.log('🔴 User disconnected');
   });
 });
 
-// ✅ Crash safety
+// ✅ Error catchers
 process.on('uncaughtException', (err) => {
   console.error('💥 Uncaught Exception:', err);
 });
-
 process.on('unhandledRejection', (err) => {
   console.error('💥 Unhandled Rejection:', err);
 });
 
-// ✅ Start server
+// ✅ Start
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
