@@ -11,11 +11,19 @@ const chatWith = document.getElementById('chatWith');
 const userStatus = document.getElementById('userStatus');
 const recentChats = document.getElementById('recentChats');
 
+// Media elements
+const imageBtn = document.getElementById('imageBtn');
+const voiceBtn = document.getElementById('voiceBtn');
+const imageInput = document.getElementById('imageInput');
+const voiceInput = document.getElementById('voiceInput');
+
 let currentUser = localStorage.getItem('username');
 let currentUserId = localStorage.getItem('userId');
 let selectedUser = null;
 let onlineUsers = new Set();
 let recentChatsList = new Set();
+let mediaRecorder = null;
+let audioChunks = [];
 
 // Check if user is logged in
 if (!currentUser || !currentUserId) {
@@ -28,6 +36,12 @@ currentUserSpan.textContent = `Logged in as: ${currentUser}`;
 // Register user with socket
 socket.emit('registerUser', { userId: currentUserId, username: currentUser });
 
+// Auto-resize textarea
+messageInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
 // Logout functionality
 logoutBtn.addEventListener('click', async () => {
     try {
@@ -37,6 +51,87 @@ logoutBtn.addEventListener('click', async () => {
         window.location.href = '/';
     } catch (error) {
         console.error('Logout error:', error);
+    }
+});
+
+// Image sending functionality
+imageBtn.addEventListener('click', () => {
+    imageInput.click();
+});
+
+imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && selectedUser) {
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            alert('Image size must be less than 5MB');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageData = e.target.result;
+            socket.emit('privateMessage', { 
+                to: selectedUser, 
+                message: '', 
+                media: { type: 'image', data: imageData, filename: file.name }
+            });
+        };
+        reader.readAsDataURL(file);
+    } else if (!selectedUser) {
+        alert('Please select a user to send image to');
+    }
+    imageInput.value = ''; // Reset input
+});
+
+// Voice recording functionality
+voiceBtn.addEventListener('click', async () => {
+    if (!selectedUser) {
+        alert('Please select a user to send voice note to');
+        return;
+    }
+    
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Stop recording
+        mediaRecorder.stop();
+        voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> Voice';
+        voiceBtn.style.background = 'var(--bg-tertiary)';
+        voiceBtn.style.color = 'var(--text-secondary)';
+    } else {
+        // Start recording
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const audioData = e.target.result;
+                    socket.emit('privateMessage', { 
+                        to: selectedUser, 
+                        message: '', 
+                        media: { type: 'audio', data: audioData, filename: 'voice_note.wav' }
+                    });
+                };
+                reader.readAsDataURL(audioBlob);
+                
+                // Stop all tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+            
+            mediaRecorder.start();
+            voiceBtn.innerHTML = '<i class="fas fa-stop"></i> Stop';
+            voiceBtn.style.background = 'var(--error-color)';
+            voiceBtn.style.color = 'white';
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            alert('Unable to access microphone. Please check permissions.');
+        }
     }
 });
 
@@ -80,7 +175,7 @@ async function loadChatHistory(username) {
         if (messages && messages.length > 0) {
             messages.forEach(msg => {
                 const isOwn = msg.sender === currentUser;
-                appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt);
+                appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt, msg.media);
             });
         } else {
             // Show a message when no history
@@ -116,13 +211,13 @@ form.addEventListener('submit', (e) => {
 });
 
 // Handle message confirmation from server
-socket.on('messageSent', ({ to, message, timestamp }) => {
-    appendMessage(currentUser, message, true, timestamp);
+socket.on('messageSent', ({ to, message, timestamp, media }) => {
+    appendMessage(currentUser, message, true, timestamp, media);
 });
 
 // Handle incoming messages
-socket.on('privateMessage', ({ from, message, timestamp }) => {
-    appendMessage(from, message, false, timestamp);
+socket.on('privateMessage', ({ from, message, timestamp, media }) => {
+    appendMessage(from, message, false, timestamp, media);
     
     // Add to recent chats
     recentChatsList.add(from);
@@ -130,7 +225,10 @@ socket.on('privateMessage', ({ from, message, timestamp }) => {
     
     // If not currently chatting with this user, show notification
     if (selectedUser !== from) {
-        showNotification(`${from}: ${message}`);
+        const notificationText = media ? 
+            `${from} sent a ${media.type}` : 
+            `${from}: ${message}`;
+        showNotification(notificationText);
     }
 });
 
@@ -140,11 +238,31 @@ socket.on('messageError', ({ error }) => {
 });
 
 // Append message to chat
-function appendMessage(sender, message, isOwn, timestamp) {
+function appendMessage(sender, message, isOwn, timestamp, media = null) {
     const msg = document.createElement('div');
     msg.className = isOwn ? 'message own' : 'message incoming';
     
     const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+    
+    let mediaContent = '';
+    if (media) {
+        if (media.type === 'image') {
+            mediaContent = `
+                <div class="message-media">
+                    <img src="${media.data}" alt="Image" onclick="openImageModal('${media.data}')" style="cursor: pointer;">
+                </div>
+            `;
+        } else if (media.type === 'audio') {
+            mediaContent = `
+                <div class="message-media">
+                    <audio controls>
+                        <source src="${media.data}" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            `;
+        }
+    }
     
     msg.innerHTML = `
         <div class="message-content">
@@ -152,12 +270,47 @@ function appendMessage(sender, message, isOwn, timestamp) {
                 <strong>${sender}</strong>
                 <span class="message-time">${time}</span>
             </div>
-            <div class="message-text">${message}</div>
+            ${message ? `<div class="message-text">${message}</div>` : ''}
+            ${mediaContent}
         </div>
     `;
     
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Open image in modal
+function openImageModal(imageSrc) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        cursor: pointer;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.style.cssText = `
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: 8px;
+    `;
+    
+    modal.appendChild(img);
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
 }
 
 // Update online users list

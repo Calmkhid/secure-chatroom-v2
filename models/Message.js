@@ -4,6 +4,14 @@ const messageSchema = new mongoose.Schema({
     sender: String,
     receiver: String,
     message: String,
+    media: {
+        type: {
+            type: String,
+            enum: ['image', 'audio']
+        },
+        data: String,
+        filename: String
+    },
     isGroup: Boolean,
     timestamp: { type: Date, default: Date.now }
 });

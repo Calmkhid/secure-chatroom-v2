@@ -5,39 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Secure Chatroom</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
   <div class="chat-container">
     <div class="header">
-      <h1>Secure Chatroom</h1>
+      <h1><i class="fas fa-shield-alt"></i> Secure Chatroom</h1>
       <div class="user-info">
         <span id="currentUser"></span>
-        <button id="logoutBtn">Logout</button>
+        <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
       </div>
     </div>
     
     <div class="main-content">
       <div class="sidebar">
         <div class="user-search">
-          <h3>Find User to Chat</h3>
+          <h3><i class="fas fa-search"></i> Find User to Chat</h3>
           <input type="text" id="userSearch" placeholder="Enter username to search..." />
-          <button id="searchBtn">Search</button>
+          <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
         </div>
         
         <div class="online-users">
-          <h3>Online Users</h3>
+          <h3><i class="fas fa-users"></i> Online Users</h3>
           <ul id="userList"></ul>
         </div>
         
         <div class="recent-chats">
-          <h3>Recent Chats</h3>
+          <h3><i class="fas fa-clock"></i> Recent Chats</h3>
           <ul id="recentChats"></ul>
         </div>
       </div>
       
       <div class="chat-window">
         <div class="chat-header">
-          <h2 id="chatWith">Select a user to start chatting</h2>
+          <h2 id="chatWith"><i class="fas fa-comments"></i> Select a user to start chatting</h2>
           <div class="user-status" id="userStatus"></div>
         </div>
         
@@ -45,10 +47,20 @@
           <div id="chatMessages"></div>
         </div>
         
-        <div class="message-input">
+        <div class="message-input-container">
+          <div class="media-buttons">
+            <button class="media-btn" id="imageBtn" title="Send Image">
+              <i class="fas fa-image"></i> Image
+            </button>
+            <button class="media-btn" id="voiceBtn" title="Send Voice Note">
+              <i class="fas fa-microphone"></i> Voice
+            </button>
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <input type="file" id="voiceInput" accept="audio/*" style="display: none;">
+          </div>
           <form id="messageForm">
-            <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" />
-            <button type="submit">Send</button>
+            <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" rows="1"></textarea>
+            <button type="submit"><i class="fas fa-paper-plane"></i> Send</button>
           </form>
         </div>
       </div>

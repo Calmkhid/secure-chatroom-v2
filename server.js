@@ -86,12 +86,18 @@ app.get('/api/messages/:username', ensureAuth, async (req, res) => {
             isGroup: false
         }).sort({ createdAt: 1 });
         
-        const decryptedMessages = messages.map(msg => ({
-            ...msg.toObject(),
-            message: decrypt(msg.message)
-        }));
+        const processedMessages = messages.map(msg => {
+            const messageObj = msg.toObject();
+            
+            // Decrypt text messages
+            if (messageObj.message) {
+                messageObj.message = decrypt(messageObj.message);
+            }
+            
+            return messageObj;
+        });
         
-        res.json(decryptedMessages);
+        res.json(processedMessages);
     } catch (error) {
         console.error('Message history error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -154,17 +160,31 @@ io.on('connection', (socket) => {
         io.emit('userList', Object.keys(users));
     });
 
-    socket.on('privateMessage', async ({ to, message }) => {
+    socket.on('privateMessage', async ({ to, message, media }) => {
         try {
-            const encrypted = encrypt(message);
             const timestamp = new Date();
+            let encryptedMessage = '';
+            let mediaData = null;
+            
+            if (media) {
+                // Handle media message
+                mediaData = {
+                    type: media.type,
+                    data: media.data,
+                    filename: media.filename
+                };
+            } else {
+                // Handle text message
+                encryptedMessage = encrypt(message);
+            }
             
             // Send message to recipient if online
             if (users[to]) {
                 io.to(users[to]).emit('privateMessage', {
                     from: socket.username,
-                    message: message, // Send decrypted message to recipient
-                    timestamp: timestamp
+                    message: message,
+                    timestamp: timestamp,
+                    media: mediaData
                 });
             }
 
@@ -172,19 +192,21 @@ io.on('connection', (socket) => {
             socket.emit('messageSent', {
                 to: to,
                 message: message,
-                timestamp: timestamp
+                timestamp: timestamp,
+                media: mediaData
             });
 
             // Save message to database
             await Message.create({
                 sender: socket.username,
                 receiver: to,
-                message: encrypted,
+                message: encryptedMessage,
+                media: mediaData,
                 isGroup: false,
                 createdAt: timestamp
             });
             
-            console.log('Message sent from', socket.username, 'to', to);
+            console.log('Message sent from', socket.username, 'to', to, media ? `(${media.type})` : '');
         } catch (error) {
             console.error('Message error:', error);
             socket.emit('messageError', { error: 'Failed to send message' });
