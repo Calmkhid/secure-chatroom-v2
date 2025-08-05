@@ -1040,6 +1040,110 @@ body {
   }
 }
 
+/* Mobile Search Bar - Always Visible */
+.mobile-search-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-search-bar {
+    display: block;
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .search-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  #mobileUserSearch {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
+    border: 2px solid var(--border-color);
+    border-radius: 25px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  
+  #mobileUserSearch:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+  }
+  
+  #mobileSearchBtn {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  #mobileSearchBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* Mobile User List - Show directly on main screen */
+.mobile-user-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-user-list {
+    display: block;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .mobile-user-list h3 {
+    font-size: 1em;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .mobile-user-item {
+    padding: 12px 16px;
+    margin: 4px 0;
+    font-size: 14px;
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mobile-user-item:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+    transform: translateX(5px);
+  }
+  
+  .mobile-user-item.selected {
+    background: var(--primary-color);
+    color: white;
+  }
+}
+
 /* Desktop Layout */
 @media (min-width: 769px) {
   .chat-container {

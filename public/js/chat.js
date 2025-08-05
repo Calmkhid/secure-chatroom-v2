@@ -21,6 +21,13 @@ const voiceInput = document.getElementById('voiceInput');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.querySelector('.sidebar');
 
+// Mobile search elements
+const mobileUserSearch = document.getElementById('mobileUserSearch');
+const mobileSearchBtn = document.getElementById('mobileSearchBtn');
+
+// Mobile user list
+const mobileUserList = document.getElementById('mobileUserList');
+
 let currentUser = localStorage.getItem('username');
 let currentUserId = localStorage.getItem('userId');
 let selectedUser = null;
@@ -50,6 +57,64 @@ if (sidebarToggle) {
     document.addEventListener('click', (e) => {
         if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
             sidebar.classList.remove('show');
+        }
+    });
+}
+
+// Update mobile user list
+function updateMobileUserList() {
+    if (mobileUserList) {
+        mobileUserList.innerHTML = '';
+        onlineUsers.forEach(user => {
+            if (user !== currentUser) {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'mobile-user-item';
+                userDiv.innerHTML = `
+                    <span class="user-name">${user}</span>
+                    <span class="status">🟢 Online</span>
+                `;
+                userDiv.addEventListener('click', () => {
+                    selectUser(user);
+                    // Highlight selected user
+                    document.querySelectorAll('.mobile-user-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    userDiv.classList.add('selected');
+                });
+                mobileUserList.appendChild(userDiv);
+            }
+        });
+    }
+}
+
+// Mobile search functionality
+if (mobileSearchBtn && mobileUserSearch) {
+    mobileSearchBtn.addEventListener('click', async () => {
+        const searchTerm = mobileUserSearch.value.trim();
+        if (!searchTerm) return;
+        
+        try {
+            const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchTerm)}`);
+            const users = await response.json();
+            
+            if (users.length > 0) {
+                const user = users[0];
+                selectUser(user.username);
+                mobileUserSearch.value = '';
+                // Close sidebar if open
+                sidebar.classList.remove('show');
+            } else {
+                alert('User not found');
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    });
+    
+    // Also allow Enter key to search
+    mobileUserSearch.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            mobileSearchBtn.click();
         }
     });
 }
@@ -390,6 +455,9 @@ socket.on('userList', users => {
     if (selectedUser) {
         userStatus.textContent = onlineUsers.has(selectedUser) ? '🟢 Online' : '🔴 Offline';
     }
+    
+    // Update mobile user list
+    updateMobileUserList();
 });
 
 // Update recent chats
@@ -441,12 +509,14 @@ socket.on('userDisconnected', username => {
     if (selectedUser === username) {
         userStatus.textContent = '🔴 Offline';
     }
+    updateMobileUserList(); // Update mobile user list
 });
 
 // Handle user connect
 socket.on('userConnected', username => {
     onlineUsers.add(username);
     if (selectedUser === username) {
-        userStatus.textContent = '🟢 Online';
+        userStatus.textContent = '�� Online';
     }
+    updateMobileUserList(); // Update mobile user list
 });
