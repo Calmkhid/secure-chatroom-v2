@@ -28,6 +28,12 @@ const mobileSearchBtn = document.getElementById('mobileSearchBtn');
 // Mobile user list
 const mobileUserList = document.getElementById('mobileUserList');
 
+// Theme toggle
+const themeToggle = document.getElementById('themeToggle');
+
+// Profile button
+const profileBtn = document.getElementById('profileBtn');
+
 let currentUser = localStorage.getItem('username');
 let currentUserId = localStorage.getItem('userId');
 let selectedUser = null;
@@ -46,6 +52,145 @@ currentUserSpan.textContent = `Logged in as: ${currentUser}`;
 
 // Register user with socket
 socket.emit('registerUser', { userId: currentUserId, username: currentUser });
+
+// Profile functionality
+if (profileBtn) {
+    profileBtn.addEventListener('click', () => {
+        showProfileModal();
+    });
+}
+
+function showProfileModal() {
+    const modal = document.createElement('div');
+    modal.className = 'profile-modal';
+    modal.innerHTML = `
+        <div class="profile-modal-content">
+            <div class="profile-header">
+                <h3><i class="fas fa-user"></i> Profile</h3>
+                <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="profile-body">
+                <div class="profile-avatar">
+                    <div class="avatar-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                <div class="profile-info">
+                    <h4>${currentUser}</h4>
+                    <p class="status">Hey there! I'm using Secure Chatroom</p>
+                    <p class="member-since">Member since ${new Date().toLocaleDateString()}</p>
+                </div>
+                <div class="profile-actions">
+                    <button class="action-btn" onclick="editStatus()">
+                        <i class="fas fa-edit"></i> Edit Status
+                    </button>
+                    <button class="action-btn" onclick="changeAvatar()">
+                        <i class="fas fa-camera"></i> Change Avatar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function editStatus() {
+    const newStatus = prompt('Enter your new status:', 'Hey there! I\'m using Secure Chatroom');
+    if (newStatus && newStatus.trim()) {
+        // Here you would typically save to database
+        console.log('Status updated:', newStatus);
+        alert('Status updated! (This would be saved to database in production)');
+    }
+}
+
+function changeAvatar() {
+    alert('Avatar change feature would be implemented here!');
+}
+
+// Dark mode functionality
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    if (themeToggle) {
+        const icon = themeToggle.querySelector('i');
+        if (theme === 'dark') {
+            icon.className = 'fas fa-sun';
+            themeToggle.title = 'Switch to Light Mode';
+        } else {
+            icon.className = 'fas fa-moon';
+            themeToggle.title = 'Switch to Dark Mode';
+        }
+    }
+}
+
+// Initialize theme
+initTheme();
+
+// Theme toggle event listener
+if (themeToggle) {
+    themeToggle.addEventListener('click', toggleTheme);
+}
+
+// Push Notifications
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('Notification permission granted');
+            }
+        });
+    }
+}
+
+function showNotification(title, body, icon = null) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification(title, {
+            body: body,
+            icon: icon || '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'chat-message',
+            requireInteraction: false,
+            silent: false
+        });
+        
+        // Auto close after 5 seconds
+        setTimeout(() => {
+            notification.close();
+        }, 5000);
+        
+        // Focus window when notification is clicked
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+    }
+}
+
+// Request notification permission on page load
+requestNotificationPermission();
 
 // Mobile sidebar toggle
 if (sidebarToggle) {
@@ -123,7 +268,98 @@ if (mobileSearchBtn && mobileUserSearch) {
 messageInput.addEventListener('input', function() {
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    
+    // Send typing indicator
+    if (selectedUser) {
+        socket.emit('typing', { to: selectedUser, isTyping: true });
+    }
 });
+
+// Stop typing indicator when user stops typing
+let typingTimeout;
+messageInput.addEventListener('input', () => {
+    clearTimeout(typingTimeout);
+    if (selectedUser) {
+        socket.emit('typing', { to: selectedUser, isTyping: true });
+    }
+    
+    typingTimeout = setTimeout(() => {
+        if (selectedUser) {
+            socket.emit('typing', { to: selectedUser, isTyping: false });
+        }
+    }, 1000);
+});
+
+// Handle typing indicators
+socket.on('userTyping', ({ from, isTyping }) => {
+    if (selectedUser === from) {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (isTyping) {
+            if (!typingIndicator) {
+                const indicator = document.createElement('div');
+                indicator.id = 'typingIndicator';
+                indicator.className = 'typing-indicator';
+                indicator.innerHTML = `
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span>${from} is typing...</span>
+                `;
+                chatMessages.appendChild(indicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        } else {
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+    }
+});
+
+// Handle message reactions
+socket.on('messageReaction', ({ messageId, reactions }) => {
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (messageElement) {
+        updateMessageReactions(messageElement, reactions);
+    }
+});
+
+function updateMessageReactions(messageElement, reactions) {
+    let reactionsContainer = messageElement.querySelector('.message-reactions');
+    if (!reactionsContainer) {
+        reactionsContainer = document.createElement('div');
+        reactionsContainer.className = 'message-reactions';
+        messageElement.appendChild(reactionsContainer);
+    }
+    
+    // Group reactions by type
+    const reactionCounts = {};
+    reactions.forEach(reaction => {
+        reactionCounts[reaction.reaction] = (reactionCounts[reaction.reaction] || 0) + 1;
+    });
+    
+    reactionsContainer.innerHTML = '';
+    Object.entries(reactionCounts).forEach(([reaction, count]) => {
+        const reactionSpan = document.createElement('span');
+        reactionSpan.className = 'reaction';
+        reactionSpan.innerHTML = `${getReactionEmoji(reaction)} ${count}`;
+        reactionsContainer.appendChild(reactionSpan);
+    });
+}
+
+function getReactionEmoji(reaction) {
+    const emojis = {
+        'like': '👍',
+        'heart': '❤️',
+        'laugh': '😂',
+        'wow': '😮',
+        'sad': '😢',
+        'angry': '😠'
+    };
+    return emojis[reaction] || '👍';
+}
 
 // Logout functionality
 logoutBtn.addEventListener('click', async () => {
@@ -339,7 +575,7 @@ socket.on('privateMessage', ({ from, message, timestamp, media }) => {
         const notificationText = media ? 
             `${from} sent a ${media.type}` : 
             `${from}: ${message}`;
-        showNotification(notificationText);
+        showNotification('New Message', notificationText);
     }
 });
 
@@ -516,7 +752,7 @@ socket.on('userDisconnected', username => {
 socket.on('userConnected', username => {
     onlineUsers.add(username);
     if (selectedUser === username) {
-        userStatus.textContent = '�� Online';
+        userStatus.textContent = '🟢 Online';
     }
     updateMobileUserList(); // Update mobile user list
 });

@@ -152,6 +152,7 @@ app.get('/chat', ensureAuth, (req, res) => {
 
 // Socket.io
 const users = {};
+const typingUsers = {};
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -168,6 +169,15 @@ io.on('connection', (socket) => {
         
         // Send updated user list
         io.emit('userList', Object.keys(users));
+    });
+
+    socket.on('typing', ({ to, isTyping }) => {
+        if (users[to]) {
+            io.to(users[to]).emit('userTyping', {
+                from: socket.username,
+                isTyping: isTyping
+            });
+        }
     });
 
     socket.on('privateMessage', async ({ to, message, media }) => {
@@ -223,6 +233,40 @@ io.on('connection', (socket) => {
         } catch (error) {
             console.error('Message error:', error);
             socket.emit('messageError', { error: 'Failed to send message' });
+        }
+    });
+
+    socket.on('addReaction', async ({ messageId, reaction }) => {
+        try {
+            const message = await Message.findById(messageId);
+            if (message) {
+                // Remove existing reaction from this user
+                message.reactions = message.reactions.filter(r => r.user !== socket.username);
+                
+                // Add new reaction
+                message.reactions.push({
+                    user: socket.username,
+                    reaction: reaction
+                });
+                
+                await message.save();
+                
+                // Notify both sender and receiver
+                const recipient = message.sender === socket.username ? message.receiver : message.sender;
+                if (users[recipient]) {
+                    io.to(users[recipient]).emit('messageReaction', {
+                        messageId: messageId,
+                        reactions: message.reactions
+                    });
+                }
+                
+                socket.emit('messageReaction', {
+                    messageId: messageId,
+                    reactions: message.reactions
+                });
+            }
+        } catch (error) {
+            console.error('Reaction error:', error);
         }
     });
 
