@@ -84,24 +84,87 @@
         </div>
         
         <div class="message-input-container">
-          <div class="media-buttons">
-            <button class="media-btn" id="imageBtn" title="Send Image">
-              <i class="fas fa-image"></i> Image
+          <div class="input-bar">
+            <button id="attachmentBtn" class="attachment-btn" title="Attachments">
+              <i class="fas fa-th"></i>
             </button>
-            <button class="media-btn" id="voiceBtn" title="Send Voice Note">
-              <i class="fas fa-microphone"></i> Voice
-            </button>
-            <button class="media-btn" id="fileBtn" title="Send File/Document">
-              <i class="fas fa-file"></i> File
-            </button>
-            <input type="file" id="imageInput" accept="image/*" style="display: none;">
-            <input type="file" id="voiceInput" accept="audio/*" style="display: none;">
-            <input type="file" id="fileInput" accept="*/*" style="display: none;">
-          </div>
-          <form id="messageForm">
             <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" rows="1"></textarea>
-            <button type="submit"><i class="fas fa-paper-plane"></i> Send</button>
-          </form>
+            <button id="voiceBtn" class="voice-btn" title="Voice Message">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <button type="submit" class="send-btn">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+          
+          <!-- Attachment Menu (Hidden by default) -->
+          <div id="attachmentMenu" class="attachment-menu">
+            <div class="attachment-grid">
+              <div class="attachment-item" onclick="selectAttachment('camera')">
+                <div class="attachment-icon camera">
+                  <i class="fas fa-camera"></i>
+                </div>
+                <span>Camera</span>
+              </div>
+              <div class="attachment-item" onclick="selectAttachment('photos')">
+                <div class="attachment-icon photos">
+                  <i class="fas fa-images"></i>
+                </div>
+                <span>Photos</span>
+              </div>
+              <div class="attachment-item" onclick="selectAttachment('document')">
+                <div class="attachment-icon document">
+                  <i class="fas fa-file"></i>
+                </div>
+                <span>Document</span>
+              </div>
+              <div class="attachment-item" onclick="selectAttachment('location')">
+                <div class="attachment-icon location">
+                  <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <span>Location</span>
+              </div>
+              <div class="attachment-item" onclick="selectAttachment('contact')">
+                <div class="attachment-icon contact">
+                  <i class="fas fa-user"></i>
+                </div>
+                <span>Contact</span>
+              </div>
+              <div class="attachment-item" onclick="selectAttachment('poll')">
+                <div class="attachment-icon poll">
+                  <i class="fas fa-poll"></i>
+                </div>
+                <span>Poll</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Voice Recording UI -->
+          <div id="voiceRecordingUI" class="voice-recording-ui" style="display: none;">
+            <div class="recording-indicator">
+              <i class="fas fa-microphone"></i>
+              <span id="recordingTime">0:00</span>
+            </div>
+            <div class="recording-instructions">
+              <span id="recordingInstruction">Slide to cancel</span>
+            </div>
+            <div class="recording-actions">
+              <button id="pauseRecordingBtn" class="action-btn">
+                <i class="fas fa-pause"></i>
+              </button>
+              <button id="deleteRecordingBtn" class="action-btn delete">
+                <i class="fas fa-trash"></i>
+              </button>
+              <button id="sendRecordingBtn" class="action-btn send">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Hidden file inputs -->
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+          <input type="file" id="photosInput" accept="image/*" multiple style="display: none;">
+          <input type="file" id="documentInput" accept="*/*" style="display: none;">
         </div>
       </div>
     </div>

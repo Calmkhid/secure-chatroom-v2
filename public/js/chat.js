@@ -890,7 +890,9 @@ function appendMessage(sender, message, isOwn, timestamp, media = null, messageI
     const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     let mediaContent = '';
+    let hasMedia = false;
     if (media) {
+        hasMedia = true;
         if (media.type === 'image') {
             mediaContent = `
                 <div class="message-media">
@@ -943,6 +945,11 @@ function appendMessage(sender, message, isOwn, timestamp, media = null, messageI
     // Add message actions for own messages
     if (isOwn && messageId) {
         addMessageActions(msg, messageId, true, message);
+    }
+    
+    // Add context menu for all messages
+    if (messageId) {
+        addMessageContextMenu(msg, messageId, isOwn, message || '', hasMedia);
     }
 }
 
@@ -1142,4 +1149,404 @@ function deleteMessage(messageId) {
             deleteFor: 'everyone'
         });
     }
+}
+
+// Message context menu functionality
+function addMessageContextMenu(messageElement, messageId, isOwn, messageText, hasMedia) {
+    let pressTimer = null;
+    let isLongPress = false;
+    
+    messageElement.addEventListener('mousedown', (e) => {
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            showMessageContextMenu(e, messageId, isOwn, messageText, hasMedia);
+        }, 500);
+    });
+    
+    messageElement.addEventListener('mouseup', () => {
+        clearTimeout(pressTimer);
+    });
+    
+    messageElement.addEventListener('mouseleave', () => {
+        clearTimeout(pressTimer);
+    });
+    
+    // Touch events for mobile
+    messageElement.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            showMessageContextMenu(e, messageId, isOwn, messageText, hasMedia);
+        }, 500);
+    });
+    
+    messageElement.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+}
+
+function showMessageContextMenu(event, messageId, isOwn, messageText, hasMedia) {
+    event.preventDefault();
+    
+    // Remove existing context menu
+    const existingMenu = document.querySelector('.message-context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    const contextMenu = document.createElement('div');
+    contextMenu.className = 'message-context-menu show';
+    
+    let menuItems = '';
+    
+    if (isOwn) {
+        if (!hasMedia) {
+            menuItems += '<div class="context-menu-item" onclick="editMessage(\'' + messageId + '\', \'' + messageText + '\')"><i class="fas fa-edit"></i> Edit</div>';
+        }
+        menuItems += '<div class="context-menu-item" onclick="deleteMessage(\'' + messageId + '\')"><i class="fas fa-trash"></i> Delete</div>';
+    } else {
+        menuItems += '<div class="context-menu-item" onclick="replyToMessage(\'' + messageId + '\')"><i class="fas fa-reply"></i> Reply</div>';
+        menuItems += '<div class="context-menu-item" onclick="forwardMessage(\'' + messageId + '\')"><i class="fas fa-share"></i> Forward</div>';
+    }
+    
+    menuItems += '<div class="context-menu-item" onclick="copyMessage(\'' + messageText + '\')"><i class="fas fa-copy"></i> Copy</div>';
+    menuItems += '<div class="context-menu-item" onclick="starMessage(\'' + messageId + '\')"><i class="fas fa-star"></i> Star</div>';
+    
+    contextMenu.innerHTML = menuItems;
+    
+    // Position the menu
+    const rect = event.target.getBoundingClientRect();
+    contextMenu.style.position = 'fixed';
+    contextMenu.style.top = rect.top + 'px';
+    contextMenu.style.left = rect.left + 'px';
+    contextMenu.style.zIndex = '1000';
+    
+    document.body.appendChild(contextMenu);
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeContextMenu);
+    }, 100);
+}
+
+function closeContextMenu() {
+    const contextMenu = document.querySelector('.message-context-menu');
+    if (contextMenu) {
+        contextMenu.remove();
+    }
+    document.removeEventListener('click', closeContextMenu);
+}
+
+function replyToMessage(messageId) {
+    // Implementation for reply functionality
+    alert('Reply functionality coming soon!');
+    closeContextMenu();
+}
+
+function forwardMessage(messageId) {
+    // Implementation for forward functionality
+    alert('Forward functionality coming soon!');
+    closeContextMenu();
+}
+
+function copyMessage(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Message copied to clipboard!');
+    });
+    closeContextMenu();
+}
+
+function starMessage(messageId) {
+    // Implementation for star functionality
+    alert('Message starred!');
+    closeContextMenu();
+}
+
+// Attachment menu elements
+const attachmentBtn = document.getElementById('attachmentBtn');
+const attachmentMenu = document.getElementById('attachmentMenu');
+const voiceRecordingUI = document.getElementById('voiceRecordingUI');
+const recordingTime = document.getElementById('recordingTime');
+const recordingInstruction = document.getElementById('recordingInstruction');
+const pauseRecordingBtn = document.getElementById('pauseRecordingBtn');
+const deleteRecordingBtn = document.getElementById('deleteRecordingBtn');
+const sendRecordingBtn = document.getElementById('sendRecordingBtn');
+
+// File input elements
+const cameraInput = document.getElementById('cameraInput');
+const photosInput = document.getElementById('photosInput');
+
+// Voice recording variables
+let recordingStartTime = null;
+let recordingTimer = null;
+let isRecording = false;
+let isPaused = false;
+let recordingLocked = false;
+
+// Attachment menu functionality
+if (attachmentBtn) {
+    attachmentBtn.addEventListener('click', () => {
+        attachmentMenu.classList.toggle('show');
+    });
+}
+
+// Close attachment menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!attachmentMenu.contains(e.target) && !attachmentBtn.contains(e.target)) {
+        attachmentMenu.classList.remove('show');
+    }
+});
+
+// Attachment selection
+function selectAttachment(type) {
+    attachmentMenu.classList.remove('show');
+    
+    switch(type) {
+        case 'camera':
+            cameraInput.click();
+            break;
+        case 'photos':
+            photosInput.click();
+            break;
+        case 'document':
+            documentInput.click();
+            break;
+        case 'location':
+            alert('Location sharing coming soon!');
+            break;
+        case 'contact':
+            alert('Contact sharing coming soon!');
+            break;
+        case 'poll':
+            alert('Poll creation coming soon!');
+            break;
+    }
+}
+
+// Voice recording functionality
+if (voiceBtn) {
+    voiceBtn.addEventListener('mousedown', startRecording);
+    voiceBtn.addEventListener('mouseup', stopRecording);
+    voiceBtn.addEventListener('mouseleave', stopRecording);
+    
+    // Touch events for mobile
+    voiceBtn.addEventListener('touchstart', startRecording);
+    voiceBtn.addEventListener('touchend', stopRecording);
+}
+
+function startRecording() {
+    if (!selectedUser) {
+        alert('Please select a user to send voice message to');
+        return;
+    }
+    
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            recordingStartTime = Date.now();
+            isRecording = true;
+            
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                showVoicePreview(audioBlob);
+            };
+            
+            mediaRecorder.start();
+            voiceBtn.classList.add('recording');
+            voiceRecordingUI.style.display = 'flex';
+            updateRecordingTime();
+            
+            // Start recording timer
+            recordingTimer = setInterval(updateRecordingTime, 1000);
+        })
+        .catch(error => {
+            console.error('Error accessing microphone:', error);
+            alert('Unable to access microphone');
+        });
+}
+
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceRecordingUI.style.display = 'none';
+        
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+    }
+}
+
+function updateRecordingTime() {
+    if (recordingStartTime) {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        recordingTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+function showVoicePreview(audioBlob) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        showMediaPreview({
+            data: e.target.result,
+            filename: 'voice_message.wav',
+            size: audioBlob.size,
+            type: 'audio'
+        }, 'audio');
+    };
+    reader.readAsDataURL(audioBlob);
+}
+
+// Voice recording actions
+if (pauseRecordingBtn) {
+    pauseRecordingBtn.addEventListener('click', () => {
+        if (isPaused) {
+            mediaRecorder.resume();
+            isPaused = false;
+            pauseRecordingBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        } else {
+            mediaRecorder.pause();
+            isPaused = true;
+            pauseRecordingBtn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+    });
+}
+
+if (deleteRecordingBtn) {
+    deleteRecordingBtn.addEventListener('click', () => {
+        stopRecording();
+        audioChunks = [];
+    });
+}
+
+if (sendRecordingBtn) {
+    sendRecordingBtn.addEventListener('click', () => {
+        if (audioChunks.length > 0) {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                socket.emit('privateMessage', {
+                    to: selectedUser,
+                    message: '',
+                    media: {
+                        type: 'audio',
+                        data: e.target.result,
+                        filename: 'voice_message.wav',
+                        size: audioBlob.size
+                    }
+                });
+            };
+            reader.readAsDataURL(audioBlob);
+            stopRecording();
+        }
+    });
+}
+
+// File input handlers
+if (cameraInput) {
+    cameraInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && selectedUser) {
+            showMediaPreview(file, 'image');
+        }
+    });
+}
+
+if (photosInput) {
+    photosInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0 && selectedUser) {
+            if (files.length === 1) {
+                showMediaPreview(files[0], 'image');
+            } else {
+                showMultipleImagesPreview(files);
+            }
+        }
+    });
+}
+
+if (documentInput) {
+    documentInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && selectedUser) {
+            showMediaPreview(file, 'file');
+        }
+    });
+}
+
+function showMultipleImagesPreview(files) {
+    const modal = document.createElement('div');
+    modal.className = 'media-preview-modal';
+    modal.style.display = 'flex';
+    
+    let imageHTML = '';
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imageHTML += `
+                <div class="multiple-image-preview">
+                    <img src="${e.target.result}" alt="Image ${index + 1}">
+                    <div class="image-checkbox">
+                        <input type="checkbox" id="img${index}" checked>
+                        <label for="img${index}">Send</label>
+                    </div>
+                </div>
+            `;
+            
+            if (index === files.length - 1) {
+                modal.innerHTML = `
+                    <div class="media-preview-content">
+                        <div class="media-preview-header">
+                            <h3><i class="fas fa-images"></i> Select Images to Send</h3>
+                            <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="media-preview-body">
+                            <div class="multiple-images-grid">
+                                ${imageHTML}
+                            </div>
+                            <div class="media-preview-actions">
+                                <button class="cancel-btn" onclick="this.closest('.media-preview-modal').remove()">Cancel</button>
+                                <button class="send-btn" onclick="sendSelectedImages()">Send Selected</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function sendSelectedImages() {
+    const checkboxes = document.querySelectorAll('.multiple-image-preview input[type="checkbox"]:checked');
+    const images = Array.from(checkboxes).map(cb => {
+        const img = cb.closest('.multiple-image-preview').querySelector('img');
+        return img.src;
+    });
+    
+    images.forEach(imageData => {
+        socket.emit('privateMessage', {
+            to: selectedUser,
+            message: '',
+            media: {
+                type: 'image',
+                data: imageData,
+                filename: 'image.jpg'
+            }
+        });
+    });
+    
+    document.querySelector('.media-preview-modal').remove();
 }
