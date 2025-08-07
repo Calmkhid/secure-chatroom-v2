@@ -270,6 +270,82 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('editMessage', async ({ messageId, newText }) => {
+        try {
+            const message = await Message.findById(messageId);
+            if (message && message.sender === socket.username) {
+                // Check if message is within 10 minutes
+                const messageTime = new Date(message.timestamp);
+                const now = new Date();
+                const timeDiff = (now - messageTime) / (1000 * 60); // minutes
+                
+                if (timeDiff <= 10) {
+                    message.message = encrypt(newText);
+                    message.edited = true;
+                    message.editedAt = new Date();
+                    await message.save();
+                    
+                    // Notify recipient
+                    if (users[message.receiver]) {
+                        io.to(users[message.receiver]).emit('messageEdited', {
+                            messageId: messageId,
+                            newText: newText,
+                            editedAt: message.editedAt
+                        });
+                    }
+                    
+                    socket.emit('messageEdited', {
+                        messageId: messageId,
+                        newText: newText,
+                        editedAt: message.editedAt
+                    });
+                } else {
+                    socket.emit('editError', { error: 'Cannot edit messages older than 10 minutes' });
+                }
+            }
+        } catch (error) {
+            console.error('Edit message error:', error);
+            socket.emit('editError', { error: 'Failed to edit message' });
+        }
+    });
+
+    socket.on('deleteMessage', async ({ messageId, deleteFor }) => {
+        try {
+            const message = await Message.findById(messageId);
+            if (message && message.sender === socket.username) {
+                if (deleteFor === 'everyone') {
+                    // Delete for everyone
+                    await Message.findByIdAndDelete(messageId);
+                    
+                    // Notify recipient
+                    if (users[message.receiver]) {
+                        io.to(users[message.receiver]).emit('messageDeleted', {
+                            messageId: messageId,
+                            deleteFor: 'everyone'
+                        });
+                    }
+                    
+                    socket.emit('messageDeleted', {
+                        messageId: messageId,
+                        deleteFor: 'everyone'
+                    });
+                } else if (deleteFor === 'me') {
+                    // Mark as deleted for sender only
+                    message.deletedForSender = true;
+                    await message.save();
+                    
+                    socket.emit('messageDeleted', {
+                        messageId: messageId,
+                        deleteFor: 'me'
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Delete message error:', error);
+            socket.emit('deleteError', { error: 'Failed to delete message' });
+        }
+    });
+
     socket.on('disconnect', () => {
         if (socket.username) {
             delete users[socket.username];

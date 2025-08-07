@@ -29,6 +29,10 @@ const scheduleMessageBtn = document.getElementById('scheduleMessageBtn');
 const createGroupBtn = document.getElementById('createGroupBtn');
 const groupList = document.getElementById('groupList');
 
+// Media preview variables
+let previewedMedia = null;
+let previewedMediaType = null;
+
 // Mobile toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.querySelector('.sidebar');
@@ -767,43 +771,66 @@ function selectUser(username) {
 
 // Load chat history
 async function loadChatHistory(username) {
+    if (!username || username === 'undefined') return;
+    
     try {
-        console.log(`Loading chat history for user: ${username}`);
-        const response = await fetch(`/api/messages/${username}`);
+        chatMessages.innerHTML = '<div class="loading">Loading chat history...</div>';
         
+        const response = await fetch(`/api/messages/${username}`);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error('Failed to load chat history');
         }
         
         const messages = await response.json();
-        console.log(`Loaded ${messages.length} messages`);
         
         chatMessages.innerHTML = '';
         
-        if (messages && messages.length > 0) {
-            messages.forEach((msg, index) => {
-                const isOwn = msg.sender === currentUser;
-                console.log(`Message ${index + 1}:`, msg);
-                appendMessage(msg.sender, msg.message, isOwn, msg.timestamp || msg.createdAt, msg.media);
-            });
-            
-            // Scroll to bottom to show latest messages
-            setTimeout(() => {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }, 100);
-        } else {
-            // Show a message when no history
-            const noHistory = document.createElement('div');
-            noHistory.className = 'no-history';
-            noHistory.innerHTML = `
-                <i class="fas fa-comments" style="font-size: 2em; color: var(--text-secondary); margin-bottom: 10px;"></i>
-                <div>No messages yet. Start the conversation!</div>
+        if (messages.length === 0) {
+            chatMessages.innerHTML = `
+                <div class="no-history">
+                    <i class="fas fa-comments"></i>
+                    <p>No previous messages</p>
+                    <small>Start a conversation with ${username}</small>
+                </div>
             `;
-            chatMessages.appendChild(noHistory);
+            return;
         }
+        
+        messages.forEach(msg => {
+            const isOwn = msg.sender === currentUser;
+            const messageText = msg.message ? decrypt(msg.message) : '';
+            
+            // Only show messages that aren't deleted for the current user
+            if (!msg.deletedForSender || !isOwn) {
+                appendMessage(
+                    msg.sender, 
+                    messageText, 
+                    isOwn, 
+                    msg.timestamp, 
+                    msg.media,
+                    msg._id,
+                    msg.edited
+                );
+            }
+        });
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Add to recent chats
+        if (username !== currentUser) {
+            recentChatsList.add(username);
+            updateRecentChats();
+        }
+        
     } catch (error) {
         console.error('Error loading chat history:', error);
-        chatMessages.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> Failed to load chat history: ${error.message}</div>`;
+        chatMessages.innerHTML = `
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Failed to load chat history</p>
+                <small>${error.message}</small>
+            </div>
+        `;
     }
 }
 
@@ -853,9 +880,12 @@ socket.on('messageError', ({ error }) => {
 });
 
 // Append message to chat
-function appendMessage(sender, message, isOwn, timestamp, media = null) {
+function appendMessage(sender, message, isOwn, timestamp, media = null, messageId = null, edited = false) {
     const msg = document.createElement('div');
     msg.className = `message ${isOwn ? 'own' : 'incoming'}`;
+    if (messageId) {
+        msg.setAttribute('data-message-id', messageId);
+    }
     
     const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
@@ -894,19 +924,26 @@ function appendMessage(sender, message, isOwn, timestamp, media = null) {
         }
     }
     
+    const editedIndicator = edited ? ' <span class="edited-indicator">(edited)</span>' : '';
+    
     msg.innerHTML = `
         <div class="message-content">
             <div class="message-header">
                 <strong>${sender}</strong>
                 <span class="message-time">${time}</span>
             </div>
-            ${message ? `<div class="message-text">${message}</div>` : ''}
+            ${message ? `<div class="message-text">${message}${editedIndicator}</div>` : ''}
             ${mediaContent}
         </div>
     `;
     
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Add message actions for own messages
+    if (isOwn && messageId) {
+        addMessageActions(msg, messageId, true, message);
+    }
 }
 
 function formatFileSize(bytes) {
@@ -998,24 +1035,28 @@ socket.on('userList', users => {
 
 // Update recent chats
 function updateRecentChats() {
+    const recentChats = document.getElementById('recentChats');
+    if (!recentChats) return;
+    
     recentChats.innerHTML = '';
+    
+    // Get unique users from recent chats
+    const uniqueUsers = new Set();
     recentChatsList.forEach(user => {
-        if (user !== currentUser) {
+        if (user && user.trim() !== '' && user !== 'undefined') {
+            uniqueUsers.add(user.trim());
+        }
+    });
+    
+    uniqueUsers.forEach(username => {
+        if (username && username !== currentUser) {
             const li = document.createElement('li');
             li.className = 'recent-chat-item';
             li.innerHTML = `
-                <span class="user-name">${user}</span>
-                <span class="status">${onlineUsers.has(user) ? '🟢' : '🔴'}</span>
+                <span class="user-name">${username}</span>
+                <span class="status">${onlineUsers.has(username) ? '🟢 Online' : '🔴 Offline'}</span>
             `;
-            li.addEventListener('click', () => {
-                selectUser(user);
-                // Highlight the selected user
-                document.querySelectorAll('.recent-chat-item, .user-item').forEach(item => {
-                    item.style.background = 'var(--bg-secondary)';
-                });
-                li.style.background = 'var(--primary-color)';
-                li.style.color = 'white';
-            });
+            li.addEventListener('click', () => selectUser(username));
             recentChats.appendChild(li);
         }
     });
@@ -1056,3 +1097,49 @@ socket.on('userConnected', username => {
     }
     updateMobileUserList(); // Update mobile user list
 });
+
+// Message editing and deletion
+function addMessageActions(messageElement, messageId, isOwn, messageText) {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'message-actions';
+    actionsDiv.innerHTML = `
+        <button class="action-btn edit-btn" onclick="editMessage('${messageId}', '${messageText}')" title="Edit">
+            <i class="fas fa-edit"></i>
+        </button>
+        <button class="action-btn delete-btn" onclick="deleteMessage('${messageId}')" title="Delete">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    if (!isOwn) {
+        actionsDiv.querySelector('.edit-btn').style.display = 'none';
+    }
+    
+    messageElement.appendChild(actionsDiv);
+}
+
+function editMessage(messageId, currentText) {
+    const newText = prompt('Edit your message:', currentText);
+    if (newText !== null && newText.trim() !== '') {
+        socket.emit('editMessage', {
+            messageId: messageId,
+            newText: newText.trim()
+        });
+    }
+}
+
+function deleteMessage(messageId) {
+    const deleteFor = confirm('Delete for:\n1. Cancel\n2. Delete for me only\n3. Delete for everyone');
+    
+    if (deleteFor === '2') {
+        socket.emit('deleteMessage', {
+            messageId: messageId,
+            deleteFor: 'me'
+        });
+    } else if (deleteFor === '3') {
+        socket.emit('deleteMessage', {
+            messageId: messageId,
+            deleteFor: 'everyone'
+        });
+    }
+}

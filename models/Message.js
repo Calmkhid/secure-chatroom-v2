@@ -25,6 +25,10 @@ const messageSchema = new mongoose.Schema({
         default: false
     },
     editedAt: Date,
+    deletedForSender: {
+        type: Boolean,
+        default: false
+    },
     isGroup: Boolean,
     groupName: String,
     timestamp: { type: Date, default: Date.now }
