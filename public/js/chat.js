@@ -1550,3 +1550,165 @@ function sendSelectedImages() {
     
     document.querySelector('.media-preview-modal').remove();
 }
+
+// Message sending functionality
+const sendBtn = document.querySelector('.send-btn');
+
+if (messageInput) {
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+}
+
+if (sendBtn) {
+    sendBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sendMessage();
+    });
+}
+
+function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message && selectedUser) {
+        socket.emit('privateMessage', {
+            to: selectedUser,
+            message: message
+        });
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+    } else if (!selectedUser) {
+        alert('Please select a user to send message to');
+    }
+}
+
+// User search functionality
+if (searchBtn) {
+    searchBtn.addEventListener('click', () => {
+        const username = userSearch.value.trim();
+        if (username) {
+            searchUser(username);
+        }
+    });
+}
+
+if (userSearch) {
+    userSearch.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const username = userSearch.value.trim();
+            if (username) {
+                searchUser(username);
+            }
+        }
+    });
+}
+
+// Mobile search functionality
+if (mobileSearchBtn) {
+    mobileSearchBtn.addEventListener('click', () => {
+        const username = mobileUserSearch.value.trim();
+        if (username) {
+            searchUser(username);
+        }
+    });
+}
+
+if (mobileUserSearch) {
+    mobileUserSearch.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const username = mobileUserSearch.value.trim();
+            if (username) {
+                searchUser(username);
+            }
+        }
+    });
+}
+
+function searchUser(username) {
+    if (username === currentUser) {
+        alert('You cannot chat with yourself!');
+        return;
+    }
+    
+    // Add to recent chats
+    recentChatsList.add(username);
+    updateRecentChats();
+    
+    // Select the user
+    selectUser(username);
+    
+    // Clear search input
+    if (userSearch) userSearch.value = '';
+    if (mobileUserSearch) mobileUserSearch.value = '';
+}
+
+// Socket event handlers
+socket.on('userList', (users) => {
+    updateUserList(users);
+    updateMobileUserList();
+});
+
+socket.on('userConnected', (username) => {
+    onlineUsers.add(username);
+    updateUserList(Array.from(onlineUsers));
+    updateMobileUserList();
+});
+
+socket.on('userDisconnected', (username) => {
+    onlineUsers.delete(username);
+    updateUserList(Array.from(onlineUsers));
+    updateMobileUserList();
+});
+
+function updateUserList(users) {
+    if (!userList) return;
+    
+    userList.innerHTML = '';
+    users.forEach(username => {
+        if (username !== currentUser) {
+            const li = document.createElement('li');
+            li.className = 'user-item';
+            li.innerHTML = `
+                <span class="user-name">${username}</span>
+                <span class="status">🟢 Online</span>
+            `;
+            li.addEventListener('click', () => selectUser(username));
+            userList.appendChild(li);
+        }
+    });
+}
+
+function updateMobileUserList() {
+    if (!mobileUserList) return;
+    
+    mobileUserList.innerHTML = '';
+    onlineUsers.forEach(username => {
+        if (username !== currentUser) {
+            const div = document.createElement('div');
+            div.className = 'mobile-user-item';
+            div.innerHTML = `
+                <span class="user-name">${username}</span>
+                <span class="status">🟢 Online</span>
+            `;
+            div.addEventListener('click', () => {
+                selectUser(username);
+                // Close sidebar on mobile
+                if (sidebar) {
+                    sidebar.classList.remove('show');
+                }
+            });
+            mobileUserList.appendChild(div);
+        }
+    });
+}
+
+// Mobile sidebar toggle
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        if (sidebar) {
+            sidebar.classList.toggle('show');
+        }
+    });
+}
