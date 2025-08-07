@@ -41,6 +41,17 @@
           <h3><i class="fas fa-search"></i> Find User to Chat</h3>
           <input type="text" id="userSearch" placeholder="Enter username to search..." />
           <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
+          
+          <!-- Group Chat Section -->
+          <div class="group-chat-section">
+            <h3><i class="fas fa-users"></i> Group Chats</h3>
+            <button id="createGroupBtn" class="group-btn">
+              <i class="fas fa-plus"></i> Create Group
+            </button>
+            <div id="groupList" class="group-list">
+              <!-- Groups will be populated here -->
+            </div>
+          </div>
         </div>
         
         <div class="online-users">
@@ -57,7 +68,15 @@
       <div class="chat-window">
         <div class="chat-header">
           <h2 id="chatWith"><i class="fas fa-comments"></i> Select a user to start chatting</h2>
-          <div class="user-status" id="userStatus"></div>
+          <div class="chat-actions">
+            <button id="searchMessagesBtn" title="Search Messages">
+              <i class="fas fa-search"></i>
+            </button>
+            <button id="scheduleMessageBtn" title="Schedule Message">
+              <i class="fas fa-clock"></i>
+            </button>
+            <div class="user-status" id="userStatus"></div>
+          </div>
         </div>
         
         <div class="messages-container">
@@ -72,8 +91,16 @@
             <button class="media-btn" id="voiceBtn" title="Send Voice Note">
               <i class="fas fa-microphone"></i> Voice
             </button>
+            <button class="media-btn" id="fileBtn" title="Send File">
+              <i class="fas fa-file"></i> File
+            </button>
+            <button class="media-btn" id="documentBtn" title="Send Document">
+              <i class="fas fa-file-alt"></i> Document
+            </button>
             <input type="file" id="imageInput" accept="image/*" style="display: none;">
             <input type="file" id="voiceInput" accept="audio/*" style="display: none;">
+            <input type="file" id="fileInput" accept="*/*" style="display: none;">
+            <input type="file" id="documentInput" accept=".pdf,.doc,.docx,.txt,.rtf" style="display: none;">
           </div>
           <form id="messageForm">
             <textarea id="messageInput" placeholder="Type a message..." autocomplete="off" rows="1"></textarea>

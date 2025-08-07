@@ -7,10 +7,11 @@ const messageSchema = new mongoose.Schema({
     media: {
         type: {
             type: String,
-            enum: ['image', 'audio']
+            enum: ['image', 'audio', 'file', 'document']
         },
         data: String,
-        filename: String
+        filename: String,
+        size: Number
     },
     reactions: [{
         user: String,
@@ -25,6 +26,7 @@ const messageSchema = new mongoose.Schema({
     },
     editedAt: Date,
     isGroup: Boolean,
+    groupName: String,
     timestamp: { type: Date, default: Date.now }
 });
 

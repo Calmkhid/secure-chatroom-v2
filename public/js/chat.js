@@ -17,6 +17,18 @@ const voiceBtn = document.getElementById('voiceBtn');
 const imageInput = document.getElementById('imageInput');
 const voiceInput = document.getElementById('voiceInput');
 
+// File input elements
+const fileInput = document.getElementById('fileInput');
+const documentInput = document.getElementById('documentInput');
+
+// Chat action buttons
+const searchMessagesBtn = document.getElementById('searchMessagesBtn');
+const scheduleMessageBtn = document.getElementById('scheduleMessageBtn');
+
+// Group chat elements
+const createGroupBtn = document.getElementById('createGroupBtn');
+const groupList = document.getElementById('groupList');
+
 // Mobile toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.querySelector('.sidebar');
@@ -454,6 +466,262 @@ voiceBtn.addEventListener('click', async () => {
     }
 });
 
+// File sharing functionality
+if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && selectedUser) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                socket.emit('privateMessage', {
+                    to: selectedUser,
+                    message: '',
+                    media: {
+                        type: 'file',
+                        data: e.target.result,
+                        filename: file.name,
+                        size: file.size
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+if (documentInput) {
+    documentInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && selectedUser) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                socket.emit('privateMessage', {
+                    to: selectedUser,
+                    message: '',
+                    media: {
+                        type: 'document',
+                        data: e.target.result,
+                        filename: file.name,
+                        size: file.size
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+// Message search functionality
+if (searchMessagesBtn) {
+    searchMessagesBtn.addEventListener('click', () => {
+        if (selectedUser) {
+            showMessageSearchModal();
+        } else {
+            alert('Please select a user to search messages');
+        }
+    });
+}
+
+function showMessageSearchModal() {
+    const modal = document.createElement('div');
+    modal.className = 'search-modal';
+    modal.innerHTML = `
+        <div class="search-modal-content">
+            <div class="search-header">
+                <h3><i class="fas fa-search"></i> Search Messages</h3>
+                <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="search-body">
+                <input type="text" class="search-input" placeholder="Search for messages..." id="messageSearchInput">
+                <div class="search-results" id="searchResults">
+                    <!-- Search results will appear here -->
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const searchInput = modal.querySelector('#messageSearchInput');
+    const searchResults = modal.querySelector('#searchResults');
+    
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (query.length > 2) {
+            searchMessages(query, searchResults);
+        } else {
+            searchResults.innerHTML = '';
+        }
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function searchMessages(query, resultsContainer) {
+    // This would typically search through loaded messages
+    // For now, we'll show a placeholder
+    resultsContainer.innerHTML = `
+        <div class="search-result-item">
+            <div class="search-result-text">Searching for "${query}"...</div>
+            <div class="search-result-time">This feature searches through your conversation history</div>
+        </div>
+    `;
+}
+
+// Message scheduling functionality
+if (scheduleMessageBtn) {
+    scheduleMessageBtn.addEventListener('click', () => {
+        if (selectedUser) {
+            showScheduleMessageModal();
+        } else {
+            alert('Please select a user to schedule a message');
+        }
+    });
+}
+
+function showScheduleMessageModal() {
+    const modal = document.createElement('div');
+    modal.className = 'schedule-modal';
+    modal.innerHTML = `
+        <div class="schedule-modal-content">
+            <div class="schedule-header">
+                <h3><i class="fas fa-clock"></i> Schedule Message</h3>
+                <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="schedule-body">
+                <form class="schedule-form" id="scheduleForm">
+                    <input type="text" placeholder="Message to send..." id="scheduledMessage" required>
+                    <input type="datetime-local" id="scheduleTime" required>
+                    <div class="schedule-actions">
+                        <button type="button" class="cancel-btn" onclick="this.closest('.schedule-modal').remove()">Cancel</button>
+                        <button type="submit" class="schedule-btn">Schedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const form = modal.querySelector('#scheduleForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = modal.querySelector('#scheduledMessage').value;
+        const time = modal.querySelector('#scheduleTime').value;
+        
+        if (message && time) {
+            scheduleMessage(message, time);
+            modal.remove();
+        }
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function scheduleMessage(message, scheduledTime) {
+    const scheduledDate = new Date(scheduledTime);
+    const now = new Date();
+    const delay = scheduledDate.getTime() - now.getTime();
+    
+    if (delay > 0) {
+        setTimeout(() => {
+            if (selectedUser) {
+                socket.emit('privateMessage', {
+                    to: selectedUser,
+                    message: message
+                });
+                showNotification('Scheduled Message Sent', `Message sent to ${selectedUser}`);
+            }
+        }, delay);
+        
+        alert(`Message scheduled for ${scheduledDate.toLocaleString()}`);
+    } else {
+        alert('Please select a future time');
+    }
+}
+
+// Group chat functionality
+if (createGroupBtn) {
+    createGroupBtn.addEventListener('click', () => {
+        showCreateGroupModal();
+    });
+}
+
+function showCreateGroupModal() {
+    const groupName = prompt('Enter group name:');
+    if (groupName && groupName.trim()) {
+        const members = prompt('Enter member usernames (comma-separated):');
+        if (members) {
+            const memberList = members.split(',').map(m => m.trim()).filter(m => m);
+            createGroup(groupName.trim(), memberList);
+        }
+    }
+}
+
+function createGroup(name, members) {
+    // This would typically save to database
+    console.log('Creating group:', name, 'with members:', members);
+    
+    const groupItem = document.createElement('div');
+    groupItem.className = 'group-item';
+    groupItem.innerHTML = `
+        <div class="group-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="group-info">
+            <div class="group-name">${name}</div>
+            <div class="group-members">${members.length} members</div>
+        </div>
+    `;
+    
+    groupItem.addEventListener('click', () => {
+        selectGroup(name, members);
+    });
+    
+    groupList.appendChild(groupItem);
+    alert(`Group "${name}" created successfully!`);
+}
+
+function selectGroup(name, members) {
+    // Clear previous selections
+    document.querySelectorAll('.group-item').forEach(item => item.classList.remove('selected'));
+    document.querySelectorAll('.user-item').forEach(item => item.classList.remove('selected'));
+    
+    // Select this group
+    event.target.closest('.group-item').classList.add('selected');
+    
+    selectedUser = null;
+    chatWith.textContent = `Group: ${name}`;
+    userStatus.textContent = `${members.length} members`;
+    
+    // Load group chat history
+    loadGroupChatHistory(name);
+}
+
+function loadGroupChatHistory(groupName) {
+    chatMessages.innerHTML = `
+        <div class="no-history">
+            <i class="fas fa-comments"></i>
+            <p>Group chat history would be loaded here</p>
+            <small>Group: ${groupName}</small>
+        </div>
+    `;
+}
+
 // Search for users
 searchBtn.addEventListener('click', async () => {
     const searchTerm = userSearch.value.trim();
@@ -587,9 +855,9 @@ socket.on('messageError', ({ error }) => {
 // Append message to chat
 function appendMessage(sender, message, isOwn, timestamp, media = null) {
     const msg = document.createElement('div');
-    msg.className = isOwn ? 'message own' : 'message incoming';
+    msg.className = `message ${isOwn ? 'own' : 'incoming'}`;
     
-    const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+    const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     let mediaContent = '';
     if (media) {
@@ -608,6 +876,21 @@ function appendMessage(sender, message, isOwn, timestamp, media = null) {
                     </audio>
                 </div>
             `;
+        } else if (media.type === 'file' || media.type === 'document') {
+            const fileSize = media.size ? formatFileSize(media.size) : '';
+            const icon = media.type === 'document' ? 'fas fa-file-alt' : 'fas fa-file';
+            mediaContent = `
+                <div class="message-media">
+                    <div class="file-attachment" onclick="downloadFile('${media.data}', '${media.filename}')">
+                        <i class="${icon}"></i>
+                        <div class="file-info">
+                            <div class="file-name">${media.filename}</div>
+                            <div class="file-size">${fileSize}</div>
+                        </div>
+                        <i class="fas fa-download"></i>
+                    </div>
+                </div>
+            `;
         }
     }
     
@@ -624,6 +907,23 @@ function appendMessage(sender, message, isOwn, timestamp, media = null) {
     
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function downloadFile(dataUrl, filename) {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Open image in modal
